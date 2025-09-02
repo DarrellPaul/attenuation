@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Type, Any
+from typing import Callable, Dict, Tuple, Type, Any
 import re
 
 Key = Tuple[str, str] # (rec, version)
@@ -96,3 +96,20 @@ def resolve(rec: str, version: str) -> type:
     if not cls:
         raise KeyError(f"No model registered for {key}")
     return cls
+
+# Decorator: example usage: @register(rec="P.840", version="9")
+def register(* rec: str, version: str) -> Callable[[Type[Any]], Type[Any]]:
+    """Register a class for a given record and version.
+
+    Args:
+        rec (str): The record identifier.
+        version (str): The version string.
+
+    Returns:
+        Callable[[Type[Any]], Type[Any]]: A decorator that registers the class
+        for the given record and version.
+    """
+    def decorator(cls: Type[Any]) -> Type[Any]:
+        register_class(rec, version, cls)
+        return cls
+    return decorator
