@@ -7,7 +7,9 @@ requires-python = ">=3.13"
 dependencies = [
     "jupyter>=1.1.1",
     "numpy>=2.3.2",
+    "pandas>=2.3.2",
     "pint>=0.25",
+    "pyarrow>=21.0.0",
     "typer>=0.17.3",
 ]
 
