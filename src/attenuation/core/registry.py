@@ -1,4 +1,5 @@
 from typing import Dict, Tuple, Type, Any
+import re
 
 Key = Tuple[str, str] # (rec, version)
 # _REGISTRY maps (record, version) keys to their associated class types.
@@ -9,10 +10,40 @@ _REGISTRY: Dict[Key, Type[Any]] = {}
 # Aliases are optional; the canonical (record, version) key is used if no alias is found.
 _ALIASES: Dict[Tuple[str, str], Key] = {}
 
+def _normalize_rec(rec: str) -> str:
+    """Normalize and validate recommendation string to 'P.<digits>'.
+
+    Accepts 'p.840', 'P.840', 'P840', or 'p840' and normalizes to 'P.840'.
+    Raises a ValueError for any other format.
+
+    Args:
+        rec (str): The recommendation string to normalize.
+
+    Returns:
+        str: The normalized recommendation string in 'P.<digits>' form.
+
+    Raises:
+        ValueError: If the string is not a valid recommendation identifier.
+    """
+    text = rec.strip()
+    match = re.fullmatch(r"[Pp]\.?(\d+)", text)
+    if not match:
+        raise ValueError(
+            (
+                f"Invalid recommendation string '{rec}'. "
+                "Expected 'P.<digits>' (case-insensitive). "
+                "Forms like 'P<digits>' will be normalized to 'P.<digits>'."
+            )
+        )
+    return f"P.{match.group(1)}"
+
 def register_class(rec: str, version: str, cls: Type[Any]) -> None:
     """Register a class for a given record and version.
 
-    Associates the given (rec, version) with the class in the registry.
+    Associates the given (rec, version) with the class in the registry. The
+    recommendation identifier ``rec`` is validated and normalized to the form
+    'P.<digits>' (case-insensitive). Inputs like 'P840' or 'p840' are accepted
+    and normalized to 'P.840'.
 
     Args:
         rec (str): The record identifier.
@@ -22,7 +53,8 @@ def register_class(rec: str, version: str, cls: Type[Any]) -> None:
     Returns:
         None
     """
-    _REGISTRY[(rec, version)] = cls
+    rec_norm = _normalize_rec(rec)
+    _REGISTRY[(rec_norm, version)] = cls
 
 def alias(rec: str, alias_version: str, target_version: str) -> None:
     """Register an alias for a record version.
@@ -39,7 +71,8 @@ def alias(rec: str, alias_version: str, target_version: str) -> None:
     Returns:
         None
     """
-    _ALIASES[(rec, alias_version)] = (rec, target_version)
+    rec_norm = _normalize_rec(rec)
+    _ALIASES[(rec_norm, alias_version)] = (rec_norm, target_version)
 
 def resolve(rec: str, version: str) -> type:
     """Resolve and return the registered class for a given record and version.
@@ -57,7 +90,8 @@ def resolve(rec: str, version: str) -> type:
     Raises:
         KeyError: If no class is registered for the given record and version.
     """
-    key = _ALIASES.get((rec, version), (rec, version))
+    rec_norm = _normalize_rec(rec)
+    key = _ALIASES.get((rec_norm, version), (rec_norm, version))
     cls = _REGISTRY.get(key)
     if not cls:
         raise KeyError(f"No model registered for {key}")
